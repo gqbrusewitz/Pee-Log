@@ -31,8 +31,9 @@ function toLocalInput(ts) {
 }
 const formTime = () => $('date').value && $('clock').value ? new Date(`${$('date').value}T${$('clock').value}`).getTime() : Date.now();
 function setFormTime(ts) { const v = toLocalInput(ts); $('date').value = v.slice(0, 10); $('clock').value = v.slice(11); }
-function isNight(ts) {
-  const d = new Date(ts), m = d.getHours() * 60 + d.getMinutes(), a = mins(settings.bed), b = mins(settings.wake);
+function isNight(e) {
+  if (typeof e.night === 'boolean') return e.night;
+  const d = new Date(e.time), m = d.getHours() * 60 + d.getMinutes(), a = mins(settings.bed), b = mins(settings.wake);
   return a <= b ? m >= a && m < b : m >= a || m < b;
 }
 const dayKey = ts => toLocalInput(ts).slice(0, 10);
@@ -57,7 +58,7 @@ function entryRow(e) {
   row.className = 'entry';
   row.innerHTML = '<span class="t"></span><span class="d"></span><button class="edit">Edit</button><button class="del">✕</button>';
   row.querySelector('.t').textContent = new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  row.querySelector('.d').textContent = e.pee ? '🚽 Pee' + (isNight(e.time) ? ' 🌙' : '') : `💧 ${fmtOz(e.oz)} fl oz`;
+  row.querySelector('.d').textContent = e.pee ? '🚽 Pee' + (isNight(e) ? ' 🌙' : '') : `💧 ${fmtOz(e.oz)} fl oz`;
   row.querySelector('.edit').onclick = () => startEdit(e.id);
   row.querySelector('.del').onclick = () => {
     if (confirm('Delete this entry?')) { entries = entries.filter(x => x.id !== e.id); save(); render(); }
@@ -135,7 +136,11 @@ $('entryForm').onsubmit = ev => {
   const oz = formType === 'drink' ? parseFloat($('oz').value) || 0 : 0;
   const pee = formType === 'pee' ? 1 : 0;
   if (formType === 'drink' && !oz) { $('formMsg').textContent = 'Enter how many fl oz.'; return; }
-  if (editingId) Object.assign(entries.find(x => x.id === editingId), { oz, pee, time });
+  if (editingId) {
+    const old = entries.find(x => x.id === editingId);
+    if (old.time !== time) delete old.night;
+    Object.assign(old, { oz, pee, time });
+  }
   else entries.push({ id: uid(), time, oz, pee });
   save(); resetForm(); render();
   $('formMsg').textContent = 'Saved.';
@@ -170,8 +175,8 @@ function renderCharts() {
   const inRange = entries.filter(e => keys.includes(dayKey(e.time)));
   const on = (k, f) => sum(inRange.filter(e => dayKey(e.time) === k && f(e)), e => e.pee);
   const ozBy = keys.map(k => sum(inRange.filter(e => dayKey(e.time) === k), e => e.oz));
-  const dayPee = keys.map(k => on(k, e => !isNight(e.time)));
-  const nightPee = keys.map(k => on(k, e => isNight(e.time)));
+  const dayPee = keys.map(k => on(k, e => !isNight(e)));
+  const nightPee = keys.map(k => on(k, e => isNight(e)));
   const labels = days.map(d => `${d.getMonth() + 1}/${d.getDate()}`);
   const dayLabel = i => days[i].toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -191,7 +196,7 @@ function renderCharts() {
   $('chartPee').innerHTML = barChart({ series: [{ values: dayPee, cls: 'pee' }, { values: nightPee, cls: 'night' }], labels,
     tip: (i, s) => `${dayLabel(i)}: ${s.values[i]} ${s.cls === 'night' ? 'night' : 'day'} pee` });
   const hrs = Array.from({ length: 24 }, (_, h) => h);
-  const hourSer = night => hrs.map(h => pees.filter(e => new Date(e.time).getHours() === h && isNight(e.time) === night).length);
+  const hourSer = night => hrs.map(h => pees.filter(e => new Date(e.time).getHours() === h && isNight(e) === night).length);
   const hl = h => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
   $('chartHour').innerHTML = barChart({ series: [{ values: hourSer(false), cls: 'pee' }, { values: hourSer(true), cls: 'night' }], labels: hrs.map(hl),
     tip: (h, s) => `${hl(h)}: ${s.values[h]} ${s.cls === 'night' ? 'night' : 'day'} pee` });
@@ -212,10 +217,53 @@ function download(name, text, type) {
 const stamp = () => dayKey(Date.now());
 $('exportJson').onclick = () => download(`pee-log-${stamp()}.json`, JSON.stringify({ app: 'pee-log', version: 1, entries }, null, 2), 'application/json');
 $('exportCsv').onclick = () => {
-  const rows = ['time,fluid_fl_oz,urine'];
-  [...entries].sort((a, b) => a.time - b.time).forEach(e => rows.push(`${new Date(e.time).toISOString()},${e.oz},${e.pee}`));
+  const rows = ['time,fluid_fl_oz,urine,night'];
+  [...entries].sort((a, b) => a.time - b.time).forEach(e => rows.push(`${new Date(e.time).toISOString()},${e.oz},${e.pee},${typeof e.night === 'boolean' ? +e.night : ''}`));
   download(`pee-log-${stamp()}.csv`, rows.join('\n'), 'text/csv');
 };
+function csvRows(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  row.push(cell); rows.push(row);
+  return rows.filter(r => r.some(c => c.trim()));
+}
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+// "Aug 30, 2026" + "1:02 PM" (local time) -> ms, or NaN
+function parseDateTime(d, t) {
+  const dm = d.trim().match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+  const tm = t.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$/);
+  if (!dm || !tm) return NaN;
+  let h = +tm[1]; const ap = (tm[4] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0;
+  return new Date(+dm[3], MONTHS.indexOf(dm[1].toLowerCase()), +dm[2], h, +tm[2], +(tm[3] || 0)).getTime();
+}
+function parseCsv(text) {
+  const rows = csvRows(text), head = rows.shift().map(h => h.trim().toLowerCase());
+  const col = (...names) => head.findIndex(h => names.some(n => h.startsWith(n)));
+  const iDate = col('date'), iTime = col('time'), iType = col('type'), iAmt = col('amount', 'fluid'), iUrine = col('urine'), iNight = col('day/night', 'night');
+  const nightOf = v => { v = (v || '').trim().toLowerCase(); return v === 'night' || v === '1' ? true : v === 'day' || v === '0' ? false : undefined; };
+  return rows.map(r => {
+    const e = { night: nightOf(r[iNight]) };
+    if (iType >= 0) { // spreadsheet format: Date, Time, Type, Amount (oz), Day/Night
+      e.time = parseDateTime(r[iDate] || '', r[iTime] || '');
+      const type = (r[iType] || '').trim().toLowerCase();
+      e.pee = type === 'pee' ? 1 : 0;
+      e.oz = type === 'drink' ? parseFloat(r[iAmt]) || 0 : 0;
+    } else { // this app's export: time, fluid_fl_oz, urine, night
+      e.time = new Date((r[iTime] || r[0] || '').trim()).getTime();
+      e.oz = parseFloat(r[iAmt]) || 0;
+      e.pee = parseInt(r[iUrine]) ? 1 : 0;
+    }
+    return e;
+  });
+}
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async ev => {
   const f = ev.target.files[0]; ev.target.value = '';
@@ -223,19 +271,16 @@ $('importFile').onchange = async ev => {
   try {
     const text = await f.text();
     let incoming;
-    if (f.name.toLowerCase().endsWith('.csv') || !text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-      incoming = text.split(/\r?\n/).slice(1).filter(l => l.trim()).map(l => {
-        const [t, oz, pee] = l.split(',');
-        return { time: new Date(t.trim()).getTime(), oz: parseFloat(oz) || 0, pee: parseInt(pee) ? 1 : 0 };
-      });
-    } else {
-      const j = JSON.parse(text);
+    const t0 = text.trim();
+    if (t0.startsWith('{') || t0.startsWith('[')) {
+      const j = JSON.parse(t0);
       incoming = Array.isArray(j) ? j : j.entries;
-    }
+    } else incoming = parseCsv(text);
     const seen = new Set(entries.map(e => `${e.time}|${e.oz}|${e.pee}`));
     let added = 0, skipped = 0;
-    for (const e of normalize(incoming.map(e => ({ ...e, time: Number(e.time) || new Date(e.time).getTime(), oz: Number(e.oz) || 0, pee: Number(e.pee) ? 1 : 0 })))) {
+    for (const e of normalize(incoming.map(e => ({ time: Number(e.time) || new Date(e.time).getTime(), oz: Number(e.oz) || 0, pee: Number(e.pee) ? 1 : 0, night: typeof e.night === 'boolean' ? e.night : undefined })))) {
       const n = { id: uid(), time: e.time, oz: e.oz, pee: e.pee };
+      if (typeof e.night === 'boolean') n.night = e.night;
       const sig = `${n.time}|${n.oz}|${n.pee}`;
       if (!isFinite(n.time) || (!n.oz && !n.pee) || seen.has(sig)) { skipped++; continue; }
       seen.add(sig); entries.push(n); added++;
