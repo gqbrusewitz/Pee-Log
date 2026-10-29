@@ -3,7 +3,7 @@ const KEY = 'peelog.entries.v1';
 const SKEY = 'peelog.settings.v1';
 const $ = id => document.getElementById(id);
 
-let settings = Object.assign({ on: false, every: 60, start: '08:00', end: '22:00', lastNotified: 0, sizes: [4, 8, 12, 16, 20], bed: '22:00', wake: '06:00' }, load(SKEY, {}));
+let settings = Object.assign({ on: false, every: 60, start: '08:00', end: '22:00', lastNotified: 0, sizes: [4, 8, 12, 16, 20], bed: '22:00', wake: '06:00', theme: 'system' }, load(SKEY, {}));
 let entries = normalize(load(KEY, []));
 let editingId = null;
 let formType = 'drink';
@@ -42,6 +42,19 @@ const fmtOz = n => String(Math.round(n * 100) / 100);
 const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
 const msg = t => { $('msg').textContent = t; };
 const sortedDesc = () => [...entries].sort((a, b) => b.time - a.time);
+
+// ---------- theme ----------
+function applyTheme() {
+  const t = settings.theme, root = document.documentElement;
+  if (t === 'light' || t === 'dark') root.dataset.theme = t; else delete root.dataset.theme;
+  // forced themes override the media-query-based browser bar colors
+  $('metaLight').media = t === 'dark' ? 'not all' : t === 'light' ? 'all' : '(prefers-color-scheme: light)';
+  $('metaDark').media = t === 'light' ? 'not all' : t === 'dark' ? 'all' : '(prefers-color-scheme: dark)';
+  document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.theme === (t || 'system')));
+}
+document.querySelectorAll('#themeSeg button').forEach(b => b.onclick = () => {
+  settings.theme = b.dataset.theme; saveSettings(); applyTheme();
+});
 
 // ---------- tabs ----------
 function showTab(name) {
@@ -439,4 +452,4 @@ document.addEventListener('visibilitychange', () => {
   render(); checkReminder();
 });
 setInterval(checkReminder, 60000);
-resetForm(); render(); checkReminder();
+applyTheme(); resetForm(); render(); checkReminder();
