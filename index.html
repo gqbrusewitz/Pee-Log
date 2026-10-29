@@ -43,9 +43,10 @@
         </label>
         <div class="quick" id="quick"></div>
       </div>
-      <label>Time
-        <input id="time" type="datetime-local">
-      </label>
+      <div class="row">
+        <label>Date <input id="date" type="date"></label>
+        <label>Time <input id="clock" type="time"></label>
+      </div>
       <button type="submit" class="primary" id="saveBtn">Add drink</button>
       <button type="button" id="cancelEdit" class="ghost" hidden>Cancel edit</button>
       <p id="formMsg" class="hint" role="status"></p>
@@ -80,8 +81,8 @@
     </div>
     <div id="stats" class="card stats"></div>
     <div class="card"><h2>Fluid per day (fl oz)</h2><div id="chartOz"></div></div>
-    <div class="card"><h2>Pees per day</h2><div id="chartPee"></div></div>
-    <div class="card"><h2>Pees by time of day</h2><div id="chartHour"></div></div>
+    <div class="card"><h2>Pees per day</h2><div class="legend"><i class="d"></i> Day <i class="n"></i> Night</div><div id="chartPee"></div></div>
+    <div class="card"><h2>Pees by time of day</h2><div class="legend"><i class="d"></i> Day <i class="n"></i> Night</div><div id="chartHour"></div></div>
   </section>
 </main>
 
@@ -91,6 +92,13 @@
     <label>Fl oz, separated by commas
       <input id="sizes" type="text" inputmode="decimal" placeholder="4, 8, 12, 16, 20">
     </label>
+
+    <h2>Sleep</h2>
+    <div class="row">
+      <label>Bedtime <input id="bedtime" type="time" value="22:00"></label>
+      <label>Wake-up <input id="waketime" type="time" value="06:00"></label>
+    </div>
+    <p class="hint">Pees between these times are marked as night pees (🌙) and shown in a different color on the charts.</p>
 
     <h2>Reminders</h2>
     <label class="check"><input id="remindOn" type="checkbox"> Remind me to log</label>
