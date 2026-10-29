@@ -19,47 +19,79 @@
     <button id="settingsBtn" class="ghost" aria-label="Settings">⚙︎</button>
   </header>
 
-  <section class="card today">
-    <div><span id="todayOz">0</span><small> fl oz today</small></div>
-    <div><span id="todayPee">0</span><small> pees today</small></div>
+  <nav class="tabs" role="tablist">
+    <button data-tab="log" class="on" role="tab">Log</button>
+    <button data-tab="history" role="tab">History</button>
+    <button data-tab="charts" role="tab">Charts</button>
+  </nav>
+
+  <!-- LOG -->
+  <section id="tab-log" class="tab">
+    <div class="card today">
+      <div><span id="todayOz">0</span><small> fl oz today</small></div>
+      <div><span id="todayPee">0</span><small> pees today</small></div>
+    </div>
+
+    <form id="entryForm" class="card">
+      <div class="seg" id="typeSeg">
+        <button type="button" data-type="drink" class="on">💧 Drink</button>
+        <button type="button" data-type="pee">🚽 Pee</button>
+      </div>
+      <div id="drinkFields">
+        <label>Fluid (fl oz)
+          <input id="oz" type="number" inputmode="decimal" min="0" step="any" placeholder="0">
+        </label>
+        <div class="quick" id="quick"></div>
+      </div>
+      <label>Time
+        <input id="time" type="datetime-local">
+      </label>
+      <button type="submit" class="primary" id="saveBtn">Add drink</button>
+      <button type="button" id="cancelEdit" class="ghost" hidden>Cancel edit</button>
+      <p id="formMsg" class="hint" role="status"></p>
+    </form>
+
+    <h2 class="sub">Today</h2>
+    <div id="todayLog"></div>
   </section>
 
-  <form id="entryForm" class="card">
-    <label>Fluid (fl oz)
-      <input id="oz" type="number" inputmode="decimal" min="0" step="any" placeholder="0">
-    </label>
-    <div class="quick">
-      <button type="button" data-oz="4">4</button>
-      <button type="button" data-oz="8">8</button>
-      <button type="button" data-oz="12">12</button>
-      <button type="button" data-oz="16">16</button>
-      <button type="button" data-oz="20">20</button>
+  <!-- HISTORY -->
+  <section id="tab-history" class="tab" hidden>
+    <div id="log"></div>
+    <div class="card">
+      <h2>Data</h2>
+      <div class="row">
+        <button id="exportJson">Export JSON</button>
+        <button id="exportCsv">Export CSV</button>
+        <button id="importBtn">Import</button>
+        <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
+      </div>
+      <p class="hint">Import merges with your existing entries. Accepts files exported from here.</p>
+      <p id="msg" class="hint" role="status"></p>
     </div>
-    <label class="check"><input id="pee" type="checkbox"> Peed (1)</label>
-    <label>Time
-      <input id="time" type="datetime-local">
-    </label>
-    <button type="submit" class="primary" id="saveBtn">Add entry</button>
-    <button type="button" id="cancelEdit" class="ghost" hidden>Cancel edit</button>
-  </form>
+  </section>
 
-  <section id="log"></section>
-
-  <section class="card">
-    <h2>Data</h2>
-    <div class="row">
-      <button id="exportJson">Export JSON</button>
-      <button id="exportCsv">Export CSV</button>
-      <button id="importBtn">Import</button>
-      <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
+  <!-- CHARTS -->
+  <section id="tab-charts" class="tab" hidden>
+    <div class="seg" id="rangeSeg">
+      <button data-range="7" class="on">7 days</button>
+      <button data-range="14">14 days</button>
+      <button data-range="30">30 days</button>
     </div>
-    <p class="hint">Import merges with your existing entries. Accepts files exported from here.</p>
-    <p id="msg" class="hint" role="status"></p>
+    <div id="stats" class="card stats"></div>
+    <div class="card"><h2>Fluid per day (fl oz)</h2><div id="chartOz"></div></div>
+    <div class="card"><h2>Pees per day</h2><div id="chartPee"></div></div>
+    <div class="card"><h2>Pees by time of day</h2><div id="chartHour"></div></div>
   </section>
 </main>
 
 <dialog id="settings">
   <form method="dialog">
+    <h2>Quick-add sizes</h2>
+    <label>Fl oz, separated by commas
+      <input id="sizes" type="text" inputmode="decimal" placeholder="4, 8, 12, 16, 20">
+    </label>
+
     <h2>Reminders</h2>
     <label class="check"><input id="remindOn" type="checkbox"> Remind me to log</label>
     <label>Every
