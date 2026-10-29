@@ -47,7 +47,7 @@ const sortedDesc = () => [...entries].sort((a, b) => b.time - a.time);
 function showTab(name) {
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   document.querySelectorAll('.tab').forEach(s => s.hidden = s.id !== 'tab-' + name);
-  if (name === 'charts') renderCharts();
+  if (name === 'charts') { $('timeline').innerHTML = ''; tlSel = null; renderCharts(); }
   scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -168,7 +168,70 @@ function barChart({ series, labels, fmt = fmtOz, tip }) {
   }
   return s + '</svg>';
 }
+let tlSel = null;
+function renderTimeline() {
+  const host = $('timeline');
+  const prevScroll = host.querySelector('.tl-scroll')?.scrollLeft;
+  const wasAtEnd = host.querySelector('.tl-scroll') && (() => { const e = host.querySelector('.tl-scroll'); return e.scrollWidth - e.clientWidth - e.scrollLeft < 4; })();
+  if (!entries.length) { host.innerHTML = '<div class="empty">No entries yet.</div>'; $('tlDetail').textContent = ''; return; }
+  const by = {};
+  for (const e of entries) {
+    const k = dayKey(e.time), d = by[k] || (by[k] = { oz: 0, day: 0, night: 0 });
+    d.oz += e.oz;
+    if (e.pee) d[isNight(e) ? 'night' : 'day']++;
+  }
+  const first = new Date(Math.min(...entries.map(e => e.time))), last = new Date(Math.max(Date.now(), ...entries.map(e => e.time)));
+  first.setHours(12, 0, 0, 0); last.setHours(12, 0, 0, 0);
+  const days = [];
+  for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+    const k = dayKey(d.getTime());
+    days.push({ k, date: new Date(d), ...(by[k] || { oz: 0, day: 0, night: 0 }) });
+  }
+  if (!tlSel || !by[tlSel] && !days.some(d => d.k === tlSel)) tlSel = days[days.length - 1].k;
+  const colW = 30, T = 10, B = 34, H = 230, plotH = H - T - B, W = days.length * colW;
+  const maxOz = Math.max(40, Math.ceil(Math.max(...days.map(d => d.oz)) / 40) * 40);
+  const maxPee = Math.max(4, Math.ceil(Math.max(...days.map(d => d.day + d.night)) / 4) * 4);
+  const yOz = v => T + plotH - v / maxOz * plotH, yPee = v => T + plotH - v / maxPee * plotH;
+  let grid = '', body = '', ax1 = '', ax2 = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = T + plotH - i / 4 * plotH;
+    grid += `<line class="grid" x1="0" x2="${W}" y1="${y}" y2="${y}"/>`;
+    ax1 += `<text x="26" y="${y + 3}" text-anchor="end">${maxOz / 4 * i}</text>`;
+    ax2 += `<text x="4" y="${y + 3}">${maxPee / 4 * i}</text>`;
+  }
+  days.forEach((d, i) => {
+    const x = i * colW, bw = 9;
+    if (d.k === tlSel) body += `<rect class="sel" x="${x}" y="0" width="${colW}" height="${H}"/>`;
+    if (d.oz) body += `<rect class="fl" x="${x + 4}" y="${yOz(d.oz)}" width="${bw}" height="${T + plotH - yOz(d.oz)}" rx="2"/>`;
+    const hd = d.day / maxPee * plotH, hn = d.night / maxPee * plotH;
+    if (d.day) body += `<rect class="pd" x="${x + 4 + bw + 2}" y="${T + plotH - hd}" width="${bw}" height="${hd}" rx="2"/>`;
+    if (d.night) body += `<rect class="pn" x="${x + 4 + bw + 2}" y="${T + plotH - hd - hn}" width="${bw}" height="${hn}" rx="2"/>`;
+    const dom = d.date.getDate();
+    if (dom === 1 || i === 0) body += `<text x="${x + 2}" y="${H - 4}">${d.date.toLocaleDateString(undefined, { month: 'short' })}</text>`;
+    if (true) body += `<text x="${x + colW / 2}" y="${H - 18}" text-anchor="middle">${dom}</text>`;
+    body += `<rect class="hit" data-k="${d.k}" x="${x}" y="0" width="${colW}" height="${H}"/>`;
+  });
+  host.innerHTML = `<svg width="30" height="${H}" aria-hidden="true">${ax1}</svg>` +
+    `<div class="tl-scroll"><svg width="${W}" height="${H}" role="img">${grid}${body}</svg></div>` +
+    `<svg width="22" height="${H}" aria-hidden="true">${ax2}</svg>`;
+  const sc = host.querySelector('.tl-scroll');
+  sc.scrollLeft = prevScroll == null || wasAtEnd ? sc.scrollWidth : prevScroll;
+  const detail = k => {
+    const d = days.find(x => x.k === k); if (!d) return;
+    const n = d.day + d.night;
+    $('tlDetail').textContent = `${d.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}: ${fmtOz(d.oz)} fl oz · ${n} pee${n === 1 ? '' : 's'}${d.night ? ` (${d.night} 🌙)` : ''}`;
+  };
+  detail(tlSel);
+  host.querySelectorAll('.hit').forEach(r => r.onclick = () => {
+    tlSel = r.dataset.k;
+    host.querySelector('.sel')?.remove();
+    const x = days.findIndex(d => d.k === tlSel) * colW;
+    r.parentNode.insertAdjacentHTML('afterbegin', `<rect class="sel" x="${x}" y="0" width="${colW}" height="${H}"/>`);
+    detail(tlSel);
+  });
+}
 function renderCharts() {
+  renderTimeline();
   const days = [];
   for (let i = range - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); }
   const keys = days.map(d => dayKey(d.getTime()));
