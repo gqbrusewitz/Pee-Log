@@ -12,7 +12,7 @@ h1{margin:0;font-size:1.5rem} h2{margin:0 0 8px;font-size:1.05rem}
 label{display:grid;gap:4px;font-size:.9rem;color:var(--muted)}
 label.check{display:flex;align-items:center;gap:10px;color:var(--text);font-size:1rem}
 input,select,button{font:inherit;color:var(--text)}
-input[type=number],input[type=text],input[type=datetime-local],input[type=time],select{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+input[type=number],input[type=text],input[type=date],input[type=datetime-local],input[type=time],select{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
 input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
 button{padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card);cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
@@ -33,9 +33,12 @@ dialog::backdrop{background:#0008}
 .tab{display:grid;gap:14px}.tab[hidden]{display:none}
 #drinkFields{display:grid;gap:10px}#drinkFields[hidden]{display:none}
 h2.sub{margin:6px 4px 0;font-size:1rem;color:var(--muted)}
-.stats{grid-template-columns:repeat(3,1fr);text-align:center}
+.stats{grid-template-columns:repeat(2,1fr);text-align:center}
 .stats b{display:block;font-size:1.4rem;color:var(--accent)}.stats small{font-size:.8rem}
 .chart{width:100%;height:auto;display:block}
 .chart .bar{fill:var(--accent)}.chart .bar.pee{fill:#f59e0b}
 .chart text{fill:var(--muted);font-size:9px;font-family:inherit}
 .chart line{stroke:var(--border)}
+.chart .bar.night{fill:#6366f1}
+.legend{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}.legend .d{background:#f59e0b}.legend .n{background:#6366f1;margin-left:8px}

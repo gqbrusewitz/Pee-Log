@@ -3,7 +3,7 @@ const KEY = 'peelog.entries.v1';
 const SKEY = 'peelog.settings.v1';
 const $ = id => document.getElementById(id);
 
-let settings = Object.assign({ on: false, every: 60, start: '08:00', end: '22:00', lastNotified: 0, sizes: [4, 8, 12, 16, 20] }, load(SKEY, {}));
+let settings = Object.assign({ on: false, every: 60, start: '08:00', end: '22:00', lastNotified: 0, sizes: [4, 8, 12, 16, 20], bed: '22:00', wake: '06:00' }, load(SKEY, {}));
 let entries = normalize(load(KEY, []));
 let editingId = null;
 let formType = 'drink';
@@ -29,6 +29,12 @@ function toLocalInput(ts) {
   const d = new Date(ts);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+const formTime = () => $('date').value && $('clock').value ? new Date(`${$('date').value}T${$('clock').value}`).getTime() : Date.now();
+function setFormTime(ts) { const v = toLocalInput(ts); $('date').value = v.slice(0, 10); $('clock').value = v.slice(11); }
+function isNight(ts) {
+  const d = new Date(ts), m = d.getHours() * 60 + d.getMinutes(), a = mins(settings.bed), b = mins(settings.wake);
+  return a <= b ? m >= a && m < b : m >= a || m < b;
+}
 const dayKey = ts => toLocalInput(ts).slice(0, 10);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 const fmtOz = n => String(Math.round(n * 100) / 100);
@@ -51,7 +57,7 @@ function entryRow(e) {
   row.className = 'entry';
   row.innerHTML = '<span class="t"></span><span class="d"></span><button class="edit">Edit</button><button class="del">✕</button>';
   row.querySelector('.t').textContent = new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  row.querySelector('.d').textContent = e.pee ? '🚽 Pee' : `💧 ${fmtOz(e.oz)} fl oz`;
+  row.querySelector('.d').textContent = e.pee ? '🚽 Pee' + (isNight(e.time) ? ' 🌙' : '') : `💧 ${fmtOz(e.oz)} fl oz`;
   row.querySelector('.edit').onclick = () => startEdit(e.id);
   row.querySelector('.del').onclick = () => {
     if (confirm('Delete this entry?')) { entries = entries.filter(x => x.id !== e.id); save(); render(); }
@@ -107,17 +113,17 @@ function renderQuick() {
   });
 }
 let timeTouched = false;
-$('time').addEventListener('input', () => { timeTouched = true; });
+['date', 'clock'].forEach(id => $(id).addEventListener('input', () => { timeTouched = true; }));
 function resetForm() {
   editingId = null; timeTouched = false;
-  $('oz').value = ''; $('time').value = toLocalInput(Date.now());
+  $('oz').value = ''; setFormTime(Date.now());
   $('cancelEdit').hidden = true; $('formMsg').textContent = '';
   setType(formType);
 }
 function startEdit(id) {
   const e = entries.find(x => x.id === id); if (!e) return;
   editingId = id;
-  $('oz').value = e.oz || ''; $('time').value = toLocalInput(e.time);
+  $('oz').value = e.oz || ''; setFormTime(e.time);
   $('cancelEdit').hidden = false;
   setType(e.pee ? 'pee' : 'drink');
   showTab('log');
@@ -125,7 +131,7 @@ function startEdit(id) {
 $('cancelEdit').onclick = resetForm;
 $('entryForm').onsubmit = ev => {
   ev.preventDefault();
-  const time = $('time').value ? new Date($('time').value).getTime() : Date.now();
+  const time = formTime();
   const oz = formType === 'drink' ? parseFloat($('oz').value) || 0 : 0;
   const pee = formType === 'pee' ? 1 : 0;
   if (formType === 'drink' && !oz) { $('formMsg').textContent = 'Enter how many fl oz.'; return; }
@@ -137,19 +143,24 @@ $('entryForm').onsubmit = ev => {
 };
 
 // ---------- charts ----------
-function barChart({ values, labels, cls = '', fmt = fmtOz, tip }) {
-  const W = 320, H = 150, L = 24, B = 18, T = 12, n = values.length;
-  const max = Math.max(...values, 1), niceMax = Math.ceil(max);
+function barChart({ series, labels, fmt = fmtOz, tip }) {
+  const W = 320, H = 150, L = 24, B = 18, T = 12, n = labels.length;
+  const totals = labels.map((_, i) => sum(series, x => x.values[i]));
+  const niceMax = Math.ceil(Math.max(...totals, 1));
   const bw = (W - L) / n, plotH = H - B - T;
   let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">`;
   s += `<line x1="${L}" x2="${W}" y1="${T}" y2="${T}"/><line x1="${L}" x2="${W}" y1="${H - B}" y2="${H - B}"/>`;
   s += `<text x="${L - 4}" y="${T + 3}" text-anchor="end">${fmt(niceMax)}</text><text x="${L - 4}" y="${H - B}" text-anchor="end">0</text>`;
   const step = Math.ceil(n / 8);
-  values.forEach((v, i) => {
-    const h = (v / niceMax) * plotH, x = L + i * bw + bw * 0.15;
-    s += `<rect class="bar ${cls}" x="${x}" y="${H - B - h}" width="${bw * 0.7}" height="${h}" rx="2"><title>${tip(i, v)}</title></rect>`;
+  for (let i = 0; i < n; i++) {
+    const x = L + i * bw + bw * 0.15;
+    let y = H - B;
+    for (const ser of series) {
+      const h = (ser.values[i] / niceMax) * plotH;
+      if (h > 0) { y -= h; s += `<rect class="bar ${ser.cls || ''}" x="${x}" y="${y}" width="${bw * 0.7}" height="${h}"><title>${tip(i, ser)}</title></rect>`; }
+    }
     if (i % step === 0) s += `<text x="${x + bw * 0.35}" y="${H - 5}" text-anchor="middle">${labels[i]}</text>`;
-  });
+  }
   return s + '</svg>';
 }
 function renderCharts() {
@@ -157,25 +168,33 @@ function renderCharts() {
   for (let i = range - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); }
   const keys = days.map(d => dayKey(d.getTime()));
   const inRange = entries.filter(e => keys.includes(dayKey(e.time)));
+  const on = (k, f) => sum(inRange.filter(e => dayKey(e.time) === k && f(e)), e => e.pee);
   const ozBy = keys.map(k => sum(inRange.filter(e => dayKey(e.time) === k), e => e.oz));
-  const peeBy = keys.map(k => sum(inRange.filter(e => dayKey(e.time) === k), e => e.pee));
+  const dayPee = keys.map(k => on(k, e => !isNight(e.time)));
+  const nightPee = keys.map(k => on(k, e => isNight(e.time)));
   const labels = days.map(d => `${d.getMonth() + 1}/${d.getDate()}`);
   const dayLabel = i => days[i].toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
-  const activeOz = ozBy.filter(v => v > 0).length, activePee = peeBy.filter(v => v > 0).length;
+  const activeOz = ozBy.filter(v => v > 0).length;
+  const totalPee = sum(dayPee, v => v) + sum(nightPee, v => v);
+  const activePee = keys.filter((_, i) => dayPee[i] + nightPee[i] > 0).length;
   const pees = inRange.filter(e => e.pee).sort((a, b) => a.time - b.time);
   let gap = '–';
   if (pees.length > 1) gap = ((pees[pees.length - 1].time - pees[0].time) / (pees.length - 1) / 3600000).toFixed(1) + ' h';
   $('stats').innerHTML =
     `<div><b>${activeOz ? fmtOz(sum(ozBy, v => v) / activeOz) : '–'}</b><small>avg fl oz / day</small></div>` +
-    `<div><b>${activePee ? fmtOz(sum(peeBy, v => v) / activePee) : '–'}</b><small>avg pees / day</small></div>` +
-    `<div><b>${gap}</b><small>avg between pees</small></div>`;
+    `<div><b>${activePee ? fmtOz(totalPee / activePee) : '–'}</b><small>avg pees / day</small></div>` +
+    `<div><b>${gap}</b><small>avg between pees</small></div>` +
+    `<div><b>${fmtOz(sum(nightPee, v => v) / range)}</b><small>avg 🌙 night pees / day</small></div>`;
 
-  $('chartOz').innerHTML = barChart({ values: ozBy, labels, tip: (i, v) => `${dayLabel(i)}: ${fmtOz(v)} fl oz` });
-  $('chartPee').innerHTML = barChart({ values: peeBy, labels, cls: 'pee', tip: (i, v) => `${dayLabel(i)}: ${v} pee` });
-  const byHour = Array.from({ length: 24 }, (_, h) => pees.filter(e => new Date(e.time).getHours() === h).length);
+  $('chartOz').innerHTML = barChart({ series: [{ values: ozBy }], labels, tip: (i, s) => `${dayLabel(i)}: ${fmtOz(s.values[i])} fl oz` });
+  $('chartPee').innerHTML = barChart({ series: [{ values: dayPee, cls: 'pee' }, { values: nightPee, cls: 'night' }], labels,
+    tip: (i, s) => `${dayLabel(i)}: ${s.values[i]} ${s.cls === 'night' ? 'night' : 'day'} pee` });
+  const hrs = Array.from({ length: 24 }, (_, h) => h);
+  const hourSer = night => hrs.map(h => pees.filter(e => new Date(e.time).getHours() === h && isNight(e.time) === night).length);
   const hl = h => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
-  $('chartHour').innerHTML = barChart({ values: byHour, labels: byHour.map((_, h) => hl(h)), cls: 'pee', tip: (h, v) => `${hl(h)}: ${v} pee` });
+  $('chartHour').innerHTML = barChart({ series: [{ values: hourSer(false), cls: 'pee' }, { values: hourSer(true), cls: 'night' }], labels: hrs.map(hl),
+    tip: (h, s) => `${hl(h)}: ${s.values[h]} ${s.cls === 'night' ? 'night' : 'day'} pee` });
 }
 document.querySelectorAll('#rangeSeg button').forEach(b => b.onclick = () => {
   range = +b.dataset.range;
@@ -262,6 +281,7 @@ async function registerPeriodicSync() {
 const dlg = $('settings');
 $('settingsBtn').onclick = () => {
   $('sizes').value = settings.sizes.join(', ');
+  $('bedtime').value = settings.bed; $('waketime').value = settings.wake;
   $('remindOn').checked = settings.on; $('remindEvery').value = settings.every;
   $('remindStart').value = settings.start; $('remindEnd').value = settings.end;
   dlg.showModal();
@@ -272,6 +292,10 @@ $('sizes').onchange = () => {
   $('sizes').value = settings.sizes.join(', ');
   saveSettings(); renderQuick();
 };
+['bedtime', 'waketime'].forEach(id => $(id).onchange = () => {
+  settings.bed = $('bedtime').value || '22:00'; settings.wake = $('waketime').value || '06:00';
+  saveSettings(); render();
+});
 async function applySettings() {
   const on = $('remindOn').checked;
   if (on && 'Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
@@ -303,7 +327,7 @@ if ('serviceWorker' in navigator) {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  if (!editingId && !timeTouched) $('time').value = toLocalInput(Date.now());
+  if (!editingId && !timeTouched) setFormTime(Date.now());
   render(); checkReminder();
 });
 setInterval(checkReminder, 60000);
