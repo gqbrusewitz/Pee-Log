@@ -50,3 +50,11 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 input,select{max-width:100%}
 .entry .d{min-width:0;overflow-wrap:anywhere}
 @media (max-width:380px){.entry{gap:6px;padding:8px}.entry .t{min-width:60px}}
+.legend .f{background:var(--accent);margin-left:0}.legend i+i{margin-left:8px}
+.tl{display:flex;align-items:stretch;min-width:0}
+.tl-scroll{flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.tl svg{display:block;flex:none}.tl-scroll svg{max-width:none}
+.tl text{fill:var(--muted);font-size:10px;font-family:inherit}
+.tl .grid{stroke:var(--border)}.tl .sel{fill:var(--accent);opacity:.12}
+.tl .fl{fill:var(--accent)}.tl .pd{fill:#f59e0b}.tl .pn{fill:#6366f1}.tl .hit{fill:transparent;cursor:pointer}
+.tl-detail{margin:0;font-weight:600;min-height:1.4em}
