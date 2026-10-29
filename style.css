@@ -1,4 +1,4 @@
-:root{--bg:#FAF6F0;--card:#fbf7ec;--text:#2b2519;--muted:#7b705c;--accent:#0ea5e9;--border:#e3d8c1;--danger:#dc2626}
+:root{--bg:#f3ecdc;--card:#fbf7ec;--text:#2b2519;--muted:#7b705c;--accent:#0ea5e9;--border:#e3d8c1;--danger:#dc2626}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#090c11;--card:#10151c;--text:#e7ebf1;--muted:#8793a4;--border:#1d2530}}
 :root[data-theme=dark]{--bg:#090c11;--card:#10151c;--text:#e7ebf1;--muted:#8793a4;--border:#1d2530}
 *{box-sizing:border-box}
