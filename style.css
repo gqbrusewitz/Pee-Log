@@ -42,3 +42,6 @@ h2.sub{margin:6px 4px 0;font-size:1rem;color:var(--muted)}
 .chart .bar.night{fill:#6366f1}
 .legend{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}.legend .d{background:#f59e0b}.legend .n{background:#6366f1;margin-left:8px}
+:root{color-scheme:light dark}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;background-color:var(--bg);color:var(--text);min-height:44px;line-height:1.2}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left}
