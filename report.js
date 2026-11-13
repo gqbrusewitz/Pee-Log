@@ -49,7 +49,24 @@
     font(10.5, true); text(`User: ${REPORT_NAME}`, M, 124);
     y = 156;
 
-    // ---- 1. diary ----
+    // ---- 1. summary (one row per day) ----
+    section('Summary');
+    const sRow = 22, sCols = [['Date', M + 6, 'left'], ['Frequency', M + 210, 'center'], ['Drink (oz)', M + 290, 'center'], ['Night pees', M + 370, 'center'], ['Day pees', M + 450, 'center']];
+    const sumHead = () => {
+      fill(C.head); doc.rect(M, y, CW, sRow, 'F'); font(9.5, true); ink(C.white);
+      sCols.forEach(([t, x, al]) => text(t, x, y + sRow / 2, al)); y += sRow;
+    };
+    sumHead();
+    days.forEach(d => {
+      ensure(sRow, sumHead); rowLines(sRow);
+      font(9.5, false); ink(C.text);
+      [fmtDay(d.date), d.pee, fmtOz(d.oz), d.night, d.day].forEach((v, i) => text(v, sCols[i][1], y + sRow / 2, sCols[i][2]));
+      y += sRow;
+    });
+    endTable();
+
+    y += 30;
+    // ---- 2. diary ----
     section('Diary');
     const dRow = 17, xPee = M + 235, xDrink = M + 345;
     const diaryHead = () => {
@@ -75,7 +92,7 @@
     });
     endTable(); y += 30;
 
-    // ---- 2. daily chart ----
+    // ---- 3. daily chart ----
     section('Daily Chart');
     const maxPee = Math.max(1, ...days.map(d => d.pee)), maxOz = Math.max(1, ...days.map(d => d.oz));
     const dX = M + 180, dW = 290, blockH = 46;
@@ -98,7 +115,7 @@
     });
     endTable(); y += 30;
 
-    // ---- 3. day vs night ----
+    // ---- 4. day vs night ----
     section('Day vs Night Pees');
     const barX = M + 120, barW = 300, r24 = 24;
     days.forEach(d => {
@@ -121,22 +138,6 @@
     fill(C.teal); doc.rect(M, y, 12, 12, 'F'); font(9, false); ink(C.text); text('During Day Time', M + 18, y + 6);
     fill(C.night); doc.rect(M + 120, y, 12, 12, 'F'); text('During Night Time', M + 138, y + 6);
     y += 40;
-
-    // ---- 4. summary (one row per day) ----
-    section('Summary');
-    const sRow = 22, sCols = [['Date', M + 6, 'left'], ['Frequency', M + 210, 'center'], ['Drink (oz)', M + 290, 'center'], ['Night pees', M + 370, 'center'], ['Day pees', M + 450, 'center']];
-    const sumHead = () => {
-      fill(C.head); doc.rect(M, y, CW, sRow, 'F'); font(9.5, true); ink(C.white);
-      sCols.forEach(([t, x, al]) => text(t, x, y + sRow / 2, al)); y += sRow;
-    };
-    sumHead();
-    days.forEach(d => {
-      ensure(sRow, sumHead); rowLines(sRow);
-      font(9.5, false); ink(C.text);
-      [fmtDay(d.date), d.pee, fmtOz(d.oz), d.night, d.day].forEach((v, i) => text(v, sCols[i][1], y + sRow / 2, sCols[i][2]));
-      y += sRow;
-    });
-    endTable();
 
     // ---- footer ----
     const n = doc.getNumberOfPages();
