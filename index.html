@@ -71,7 +71,6 @@ try{var t=(JSON.parse(localStorage.getItem('peelog.settings.v1'))||{}).theme;if(
         <button id="importBtn">Import</button>
         <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
       </div>
-      <button id="reportBtn" class="primary">Export PDF report</button>
       <p class="hint">Import merges with your existing entries. Accepts files exported from here.</p>
       <p id="msg" class="hint" role="status"></p>
     </div>
@@ -107,6 +106,9 @@ try{var t=(JSON.parse(localStorage.getItem('peelog.settings.v1'))||{}).theme;if(
       <button type="button" data-theme="light">Light</button>
       <button type="button" data-theme="dark">Dark</button>
     </div>
+
+    <h2>Export</h2>
+    <button type="button" id="reportBtn">Export PDF report…</button>
 
     <h2>Quick-add sizes</h2>
     <label>Fl oz, separated by commas

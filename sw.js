@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'peelog-v14';
+const CACHE = 'peelog-v15';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'report.js', 'vendor/jspdf.umd.min.js'];
 
 let state = { settings: null, lastEntry: 0 };
