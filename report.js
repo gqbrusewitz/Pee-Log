@@ -2,13 +2,16 @@
 // PDF voiding-diary report (jsPDF is vendored in vendor/ so it works offline).
 (function () {
   const REPORT_NAME = 'Garrett';
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const C = { title: [14, 165, 233], head: [66, 153, 225], teal: [95, 211, 201], blue: [74, 159, 232], night: [0, 0, 0],
+    const C = { title: [14, 165, 233], head: [66, 153, 225], teal: [95, 211, 201], blue: [74, 159, 232], night: [0, 0, 0],
     text: [30, 30, 30], line: [205, 205, 205], band: [228, 226, 226], muted: [110, 110, 110], white: [255, 255, 255] };
   const PW = 612, PH = 792, M = 56, CW = PW - 2 * M;
 
-  const fmtDay = d => `${MON[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}`;
-  const fmtClock = ts => { const d = new Date(ts); const h = d.getHours(); return `${h % 12 || 12}:${pad(d.getMinutes())} ${h < 12 ? 'am' : 'pm'}`; };
+  // Everything is written in the device's current time zone, and the zone is named in the report header.
+  const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const zoneAbbr = ts => new Intl.DateTimeFormat('en-US', { timeZone: ZONE, timeZoneName: 'short' }).formatToParts(ts).find(p => p.type === 'timeZoneName')?.value || '';
+  const parts = (ts, opts) => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: ZONE, ...opts }).formatToParts(ts).map(p => [p.type, p.value]));
+  const fmtDay = d => { const p = parts(d.getTime(), { year: 'numeric', month: 'short', day: 'numeric' }); return `${p.month} ${p.day} ${p.year}`; };
+  const fmtClock = ts => { const p = parts(ts, { hour: 'numeric', minute: '2-digit', hour12: true }); return `${p.hour}:${p.minute} ${p.dayPeriod.toLowerCase()}`; };
 
   function buildDays(start, end) {
     const days = [];
@@ -44,10 +47,12 @@
     // ---- first page header ----
     font(18, true); ink(C.title); text('Pee Log Voiding Diary', M, 62);
     font(10.5, false); ink(C.text);
-    text(`Generated On: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`, M, 92);
+    const nowTs = Date.now(), gp = parts(nowTs, { month: 'long', day: 'numeric', year: 'numeric' });
+    text(`Generated On: ${gp.month} ${gp.day}, ${gp.year}, ${fmtClock(nowTs)} ${zoneAbbr(nowTs)}.`, M, 92);
     text(`Dates:  ${fmtDay(days[days.length - 1].date)} - ${fmtDay(days[0].date)}`, M, 108);
-    font(10.5, true); text(`User: ${REPORT_NAME}`, M, 124);
-    y = 156;
+    text(`Time zone: ${ZONE.replace(/_/g, ' ')} (${zoneAbbr(days[0].date.getTime())})`, M, 124);
+    font(10.5, true); text(`User: ${REPORT_NAME}`, M, 140);
+    y = 172;
 
     // ---- 1. summary (one row per day) ----
     section('Summary');

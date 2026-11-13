@@ -69,10 +69,11 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab
 function entryRow(e) {
   const row = document.createElement('div');
   row.className = 'entry';
-  row.innerHTML = '<span class="t"></span><span class="d"></span><button class="edit">Edit</button><button class="del">✕</button>';
+  row.innerHTML = '<span class="t"></span><span class="d"></span><button class="copy">Copy</button><button class="edit">Edit</button><button class="del">✕</button>';
   row.querySelector('.t').textContent = new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   row.querySelector('.d').textContent = e.pee ? '🚽 Pee' + (isNight(e) ? ' 🌙' : '') : `💧 ${fmtOz(e.oz)} fl oz`;
   row.querySelector('.edit').onclick = () => startEdit(e.id);
+  row.querySelector('.copy').onclick = () => startCopy(e.id);
   row.querySelector('.del').onclick = () => {
     if (confirm('Delete this entry?')) { entries = entries.filter(x => x.id !== e.id); save(); render(); }
   };
@@ -89,9 +90,10 @@ function renderList(el, list, withHeaders) {
       const all = list.filter(x => dayKey(x.time) === k);
       const h = document.createElement('div');
       h.className = 'day';
-      h.innerHTML = '<span></span><span></span>';
+      h.innerHTML = '<span></span><span></span><button type="button">Copy day</button>';
       h.children[0].textContent = new Date(e.time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
       h.children[1].textContent = `${fmtOz(sum(all, x => x.oz))} fl oz · ${sum(all, x => x.pee)} pee`;
+      h.children[2].onclick = () => openCopyDay(k, all.length, h.children[0].textContent);
       el.append(h);
     }
     el.append(entryRow(e));
@@ -142,7 +144,44 @@ function startEdit(id) {
   setType(e.pee ? 'pee' : 'drink');
   showTab('log');
 }
+function startCopy(id) {
+  const e = entries.find(x => x.id === id); if (!e) return;
+  resetForm();
+  setType(e.pee ? 'pee' : 'drink');
+  $('oz').value = e.oz || '';
+  showTab('log');
+  $('formMsg').textContent = 'Copied. Change the date, time or amount if needed, then add it.';
+}
 $('cancelEdit').onclick = resetForm;
+
+// ---------- copy a whole day ----------
+let toastTimer;
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+let copySrc = null;
+function openCopyDay(key, count, label) {
+  copySrc = key;
+  $('copyInfo').textContent = `Copy ${count} ${count === 1 ? 'entry' : 'entries'} from ${label} to another date, keeping the same times. You can edit them afterwards.`;
+  const t = dayKey(Date.now());
+  $('copyTo').value = t !== key ? t : toLocalInput(Date.now() + 864e5).slice(0, 10);
+  $('copyMsg').textContent = '';
+  $('copyDlg').showModal();
+}
+$('copyCancel').onclick = () => $('copyDlg').close();
+$('copyGo').onclick = () => {
+  const to = $('copyTo').value;
+  if (!to) { $('copyMsg').textContent = 'Pick a date.'; return; }
+  if (to === copySrc) { $('copyMsg').textContent = 'Pick a different date.'; return; }
+  const [Y, Mo, D] = to.split('-').map(Number);
+  const src = entries.filter(e => dayKey(e.time) === copySrc);
+  src.forEach(e => {
+    const t = new Date(e.time);
+    const copy = { id: uid(), time: new Date(Y, Mo - 1, D, t.getHours(), t.getMinutes()).getTime(), oz: e.oz, pee: e.pee };
+    if (typeof e.night === 'boolean') copy.night = e.night;
+    entries.push(copy);
+  });
+  save(); render(); $('copyDlg').close();
+  toast(`Copied ${src.length} ${src.length === 1 ? 'entry' : 'entries'} to ${new Date(Y, Mo - 1, D).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
+};
 $('entryForm').onsubmit = ev => {
   ev.preventDefault();
   const time = formTime();
