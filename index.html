@@ -71,6 +71,7 @@ try{var t=(JSON.parse(localStorage.getItem('peelog.settings.v1'))||{}).theme;if(
         <button id="importBtn">Import</button>
         <input id="importFile" type="file" accept=".json,.csv,application/json,text/csv" hidden>
       </div>
+      <button id="reportBtn" class="primary">Export PDF report</button>
       <p class="hint">Import merges with your existing entries. Accepts files exported from here.</p>
       <p id="msg" class="hint" role="status"></p>
     </div>
@@ -140,6 +141,22 @@ try{var t=(JSON.parse(localStorage.getItem('peelog.settings.v1'))||{}).theme;if(
   </form>
 </dialog>
 
+<dialog id="reportDlg">
+  <form method="dialog" onsubmit="return false">
+    <h2>PDF report</h2>
+    <div class="row">
+      <label>From <input id="repStart" type="date"></label>
+      <label>To <input id="repEnd" type="date"></label>
+    </div>
+    <p class="hint">Includes a daily summary, charts and every entry for the dates you pick.</p>
+    <p id="reportMsg" class="hint" role="status"></p>
+    <button type="button" id="reportGo" class="primary">Create PDF</button>
+    <button type="button" id="reportCancel" class="ghost">Cancel</button>
+  </form>
+</dialog>
+
 <script src="app.js"></script>
+<script src="vendor/jspdf.umd.min.js" defer></script>
+<script src="report.js" defer></script>
 </body>
 </html>
