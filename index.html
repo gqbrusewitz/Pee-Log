@@ -154,6 +154,18 @@ try{var t=(JSON.parse(localStorage.getItem('peelog.settings.v1'))||{}).theme;if(
   </form>
 </dialog>
 
+<dialog id="copyDlg">
+  <form method="dialog" onsubmit="return false">
+    <h2>Copy day</h2>
+    <p id="copyInfo" class="hint"></p>
+    <label>Copy to <input id="copyTo" type="date"></label>
+    <p id="copyMsg" class="hint" role="status"></p>
+    <button type="button" id="copyGo" class="primary">Copy entries</button>
+    <button type="button" id="copyCancel" class="ghost">Cancel</button>
+  </form>
+</dialog>
+<div id="toast" role="status"></div>
+
 <script src="app.js"></script>
 <script src="vendor/jspdf.umd.min.js" defer></script>
 <script src="report.js" defer></script>
